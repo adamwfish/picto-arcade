@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Astro-Hop — Space Frogger</title>
+<style>
+  :root {
+    --bg: #05030f;
+    --panel: #0b0820;
+    --accent: #6cf0ff;
+    --accent2: #ff5fb0;
+    --text: #e8f1ff;
+    --dim: #8a93b8;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%;
+    background: radial-gradient(ellipse at 50% 30%, #14102d 0%, #05030f 60%, #02010a 100%);
+    color: var(--text);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    overflow: hidden;
+    -webkit-font-smoothing: none;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px;
+    user-select: none;
+  }
+  header {
+    text-align: center;
+    letter-spacing: 0.12em;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 28px;
+    color: var(--accent);
+    text-shadow:
+      0 0 8px rgba(108,240,255,0.6),
+      0 2px 0 #000;
+  }
+  header p {
+    margin: 4px 0 0;
+    color: var(--dim);
+    font-size: 12px;
+  }
+  .stage {
+    position: relative;
+    width: min(92vw, 560px);
+    aspect-ratio: 7 / 9;
+    background: #000;
+    border: 2px solid #1d1a3b;
+    border-radius: 10px;
+    box-shadow:
+      0 0 0 1px #2a2660 inset,
+      0 0 30px rgba(108,240,255,0.18),
+      0 12px 40px rgba(0,0,0,0.7);
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+  }
+  .hud {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 14px;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    color: var(--text);
+    text-shadow: 0 1px 0 #000, 0 0 6px rgba(108,240,255,0.4);
+  }
+  .hud .right { text-align: right; }
+  .hud b { color: var(--accent); font-weight: normal; }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(2,1,10,0.78);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    text-align: center;
+    padding: 24px;
+    backdrop-filter: blur(2px);
+  }
+  .overlay h2 {
+    margin: 0;
+    color: var(--accent2);
+    font-size: 22px;
+    letter-spacing: 0.18em;
+    text-shadow: 0 0 10px rgba(255,95,176,0.6), 0 2px 0 #000;
+  }
+  .overlay p {
+    margin: 0;
+    color: var(--dim);
+    font-size: 12px;
+    max-width: 380px;
+    line-height: 1.55;
+  }
+  .overlay button {
+    margin-top: 6px;
+    background: var(--accent);
+    color: #001018;
+    border: 0;
+    padding: 10px 18px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #1b8aa3, 0 0 14px rgba(108,240,255,0.5);
+    transition: transform 0.05s ease;
+  }
+  .overlay button:active { transform: translateY(2px); box-shadow: 0 2px 0 #1b8aa3; }
+  .hide { display: none !important; }
+  footer {
+    color: var(--dim);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-align: center;
+  }
+  .touch {
+    position: absolute;
+    inset: auto 0 0 0;
+    display: none;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 6px;
+    padding: 8px;
+    pointer-events: auto;
+  }
+  .touch button {
+    background: rgba(108,240,255,0.12);
+    border: 1px solid rgba(108,240,255,0.45);
+    color: var(--accent);
+    font-size: 20px;
+    border-radius: 8px;
+    padding: 14px 0;
+    font-family: inherit;
+  }
+  .touch button:active { background: rgba(108,240,255,0.3); }
+  .touch .up    { grid-column: 2; grid-row: 1; }
+  .touch .left  { grid-column: 1; grid-row: 2; }
+  .touch .down  { grid-column: 2; grid-row: 2; }
+  .touch .right { grid-column: 3; grid-row: 2; }
+  @media (pointer: coarse) {
+    .touch { display: grid; }
+    .stage { aspect-ratio: 6 / 9; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>ASTRO-HOP</h1>
+    <p>DODGE THE JUNK · REACH THE STARGATE</p>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="game" width="224" height="288"></canvas>
+    <div class="hud">
+      <div>SCORE <b id="score">0</b></div>
+      <div class="right">LIVES <b id="lives">3</b><br/>LEVEL <b id="level">1</b></div>
+    </div>
+    <div class="overlay" id="overlay">
+      <h2 id="title">ASTRO-HOP</h2>
+      <p id="message">
+        Use <b>arrow keys</b> or <b>WASD</b> to hop your astronaut up through the
+        debris fields and alien lanes. Reach the stargate at the top.
+        Touch a hazard and you lose a life.
+      </p>
+      <button id="startBtn">START</button>
+    </div>
+    <div class="touch">
+      <button class="up"    data-dir="up">▲</button>
+      <button class="left"  data-dir="left">◀</button>
+      <button class="down"  data-dir="down">▼</button>
+      <button class="right" data-dir="right">▶</button>
+    </div>
+  </div>
+
+  <footer>HI-SCORE <span id="hi">0</span></footer>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  // Logical grid - tile-based like the original Frogger.
+  // Canvas is 224x288 = 14 cols x 18 rows of 16px tiles.
+  const TILE = 16;
+  const COLS = 14;
+  const ROWS = 18;
+
+  // ---------- Pixel-art sprite system ----------
+  // Sprites are 16x16, drawn with a tiny palette. We render each sprite
+  // to an offscreen canvas once for speed.
+  const PALETTES = {
+    astro: ['#000000','#e8f1ff','#6cf0ff','#1a4f8c','#ffb86b','#ff5fb0','#222a44'],
+    junk:  ['#000000','#8a93b8','#3a3f5e','#ffb86b','#e8d36b','#6cf0ff'],
+    alien: ['#000000','#a3ff6c','#2f7a1f','#ff5fb0','#e8f1ff','#6cf0ff'],
+    ufo:   ['#000000','#c8c8d8','#6cf0ff','#1a4f8c','#ff5fb0','#ffe46b'],
+    gate:  ['#000000','#6cf0ff','#a892ff','#ff5fb0','#ffffff'],
+  };
+
+  // 16x16 sprite definitions; digits index a palette, '.' = transparent.
+  // Designed in monospace for readability.
+  const SPRITES = {
+    astro_up: [
+      '................',
+      '......11111.....',
+      '.....1222221....',
+      '....122222221...',
+      '....122111221...',
+      '....122212221...',
+      '....122111221...',
+      '....12222221....',
+      '.....1222221....',
+      '...1111111111...',
+      '..133311113331..',
+      '..133311113331..',
+      '..133311113331..',
+      '..1331....1331..',
+      '..1331....1331..',
+      '..1331....1331..',
+    ],
+    astro_down: [
+      '................',
+      '......11111.....',
+      '.....1222221....',
+      '....122222221...',
+      '....122222221...',
+      '....122222221...',
+      '....122222221...',
+      '....122222221...',
+      '.....1222221....',
+      '...1111111111...',
+      '..133311113331..',
+      '..133311113331..',
+      '..133311113331..',
+      '..1331....1331..',
+      '..1331....1331..',
+      '..1331....1331..',
+    ],
+    astro_left: [
+      '................',
+      '.....11111......',
+      '....1222221.....',
+      '...12222221.....',
+      '...12211221.....',
+      '...12211221.....',
+      '...12222221.....',
+      '...12222221.....',
+      '....1222221.....',
+      '..1111111111....',
+      '.13331.13331....',
+      '.13331.13331....',
+      '.13331.13331....',
+      '.13331..1331....',
+      '.1331...1331....',
+      '.1331...1331....',
+    ],
+    astro_right: [
+      '................',
+      '......11111.....',
+      '.....1222221....',
+      '.....12222221...',
+      '.....12211221...',
+      '.....12211221...',
+      '.....12222221...',
+      '.....12222221...',
+      '.....1222221....',
+      '....1111111111..',
+      '....13331.13331.',
+      '....13331.13331.',
+      '....13331.13331.',
+      '....1331..13331.',
+      '....1331...1331.',
+      '....1331...1331.',
+    ],
+    // Asteroid / space junk
+    asteroid: [
+      '................',
+      '.....11111......',
+      '....1222221.....',
+      '...122223221....',
+      '..12223333221...',
+      '..12233222321...',
+      '.1222332223221..',
+      '.1223322333221..',
+      '.1233322232321..',
+      '.1223333223221..',
+      '..12333222321...',
+      '..12223333221...',
+      '...122223221....',
+      '....1222221.....',
+      '.....11111......',
+      '................',
+    ],
+    // Satellite debris (rectangular junk with solar panel)
+    satellite: [
+      '................',
+      '................',
+      '..1111111111....',
+      '..1555555551....',
+      '..1551155151....',
+      '..1555555551....',
+      '..1551155151....',
+      '..1555555551....',
+      '..1111111111....',
+      '......11........',
+      '......11........',
+      '..15151511515...',
+      '..15151511515...',
+      '..15151511515...',
+      '..11111111111...',
+      '................',
+    ],
+    // Rocket booster debris
+    rocket: [
+      '................',
+      '......111.......',
+      '.....12221......',
+      '....1222221.....',
+      '....1233321.....',
+      '....1233321.....',
+      '....1233321.....',
+      '....1233321.....',
+      '....1233321.....',
+      '....1233321.....',
+      '...112333211....',
+      '..12 13332131...',
+      '.1331 12321331..',
+      '.131  .121..131.',
+      '.11...1431..11..',
+      '......1441......',
+    ],
+    // Alien ship (saucer)
+    ufo_l: [
+      '................',
+      '................',
+      '......2222......',
+      '.....233332.....',
+      '..1112333321111.',
+      '.122222222222221',
+      '.155544444444551',
+      '.1115555555 5111',
+      '..1115553555111.',
+      '....11122 211...',
+      '.....3.323.3....',
+      '.....3.323.3....',
+      '.....6.626.6....',
+      '................',
+      '................',
+      '................',
+    ],
+    ufo_r: [
+      '................',
+      '................',
+      '......2222......',
+      '.....233332.....',
+      '.1111233322111..',
+      '122222222222221.',
+      '155544444444551.',
+      '1115555555 5111.',
+      '.111555355 511..',
+      '...112225 211...',
+      '....3.323.3.....',
+      '....3.323.3.....',
+      '....6.626.6.....',
+      '................',
+      '................',
+      '................',
+    ],
+    // Alien creature (mini ship pilot)
+    alien_l: [
+      '................',
+      '......22222.....',
+      '.....2111112....',
+      '....211131112...',
+      '....211131112...',
+      '....211111112...',
+      '.....2444442....',
+      '....24411442....',
+      '...2444444442...',
+      '...2411211142...',
+      '...2444444442...',
+      '...2.2....2.2...',
+      '..22.22..22.22..',
+      '..2..22..22..2..',
+      '..2...2..2...2..',
+      '.....2....2.....',
+    ],
+    alien_r: [
+      '................',
+      '......22222.....',
+      '.....2111112....',
+      '....211131112...',
+      '....211131112...',
+      '....211111112...',
+      '.....2444442....',
+      '....24411442....',
+      '...2444444442...',
+      '...2411211142...',
+      '...2444444442...',
+      '...2.2....2.2...',
+      '..22.22..22.22..',
+      '..2..22..22..2..',
+      '..2...2..2...2..',
+      '.....2....2.....',
+    ],
+    // Stargate goal slot
+    gate: [
+      '..1111111111....',
+      '.122222222221...',
+      '.123333333321...',
+      '.123444444321...',
+      '.123422224321...',
+      '.123422224321...',
+      '.123422224321...',
+      '.123422224321...',
+      '.123422224321...',
+      '.123422224321...',
+      '.123422224321...',
+      '.123422224321...',
+      '.123444444321...',
+      '.123333333321...',
+      '.122222222221...',
+      '..1111111111....',
+    ],
+  };
+
+  // Pre-render sprites to small offscreen canvases.
+  const cache = {};
+  function buildSprite(name, paletteKey) {
+    const def = SPRITES[name];
+    const palette = PALETTES[paletteKey];
+    const c = document.createElement('canvas');
+    c.width = 16; c.height = 16;
+    const cx = c.getContext('2d');
+    for (let y = 0; y < 16; y++) {
+      const row = def[y] || '';
+      for (let x = 0; x < 16; x++) {
+        const ch = row[x];
+        if (!ch || ch === '.' || ch === ' ') continue;
+        const idx = parseInt(ch, 10);
+        if (isNaN(idx)) continue;
+        const color = palette[idx];
+        if (!color) continue;
+        cx.fillStyle = color;
+        cx.fillRect(x, y, 1, 1);
+      }
+    }
+    cache[name] = c;
+  }
+  function buildAll() {
+    buildSprite('astro_up','astro');
+    buildSprite('astro_down','astro');
+    buildSprite('astro_left','astro');
+    buildSprite('astro_right','astro');
+    buildSprite('asteroid','junk');
+    buildSprite('satellite','junk');
+    buildSprite('rocket','junk');
+    buildSprite('ufo_l','ufo');
+    buildSprite('ufo_r','ufo');
+    buildSprite('alien_l','alien');
+    buildSprite('alien_r','alien');
+    buildSprite('gate','gate');
+  }
+  buildAll();
+
+  // ---------- Starfield background ----------
+  const stars = [];
+  for (let i = 0; i < 80; i++) {
+    stars.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      s: Math.random() < 0.7 ? 1 : 2,
+      t: Math.random() * 1000,
+      v: 4 + Math.random() * 16,
+    });
+  }
+
+  // ---------- Game state ----------
+  // Row 0 = goal row (top), Row ROWS-1 = start row (bottom).
+  // Lanes are defined per row with direction, speed (px/sec), sprite, spacing.
+  // Row layout (top -> bottom):
+  //  0  goal (stargate row)
+  //  1  safe nebula
+  //  2-4  upper hazard band (UFOs / aliens)
+  //  5  safe nebula
+  //  6-9  middle debris field (asteroids, satellites)
+  //  10 safe nebula
+  //  11-13 lower band (mixed)
+  //  14 safe nebula
+  //  15-16 starting safe zone
+  //  17 start row
+  const player = {
+    col: 7, row: 17,
+    px: 7 * TILE, py: 17 * TILE,
+    tx: 7 * TILE, ty: 17 * TILE,
+    dir: 'up',
+    moving: false,
+    moveT: 0,
+    moveDur: 0.11,
+  };
+
+  let score = 0;
+  let lives = 3;
+  let level = 1;
+  let hi = parseInt(localStorage.getItem('astrohop_hi') || '0', 10);
+  let highestRowReached = 17;
+  let state = 'menu'; // menu, playing, dead, gameover, win
+  let deathTimer = 0;
+  let invuln = 0;
+
+  document.getElementById('hi').textContent = hi;
+
+  // Build lanes based on level
+  let lanes = [];
+  function buildLanes() {
+    lanes = [];
+    const speedMul = 1 + (level - 1) * 0.18;
+    // Each lane: { row, dir: 1|-1, speed: px/s, gap, type, items: [{x}] }
+    const defs = [
+      // Upper aliens band
+      { row: 2, dir: -1, speed: 38, gap: 70, type: 'ufo' },
+      { row: 3, dir:  1, speed: 30, gap: 90, type: 'alien' },
+      { row: 4, dir: -1, speed: 46, gap: 80, type: 'ufo' },
+      // Middle debris field
+      { row: 6, dir:  1, speed: 22, gap: 60, type: 'asteroid' },
+      { row: 7, dir: -1, speed: 28, gap: 75, type: 'satellite' },
+      { row: 8, dir:  1, speed: 34, gap: 95, type: 'rocket' },
+      { row: 9, dir: -1, speed: 24, gap: 65, type: 'asteroid' },
+      // Lower mixed band
+      { row: 11, dir:  1, speed: 20, gap: 70, type: 'asteroid' },
+      { row: 12, dir: -1, speed: 32, gap: 85, type: 'satellite' },
+      { row: 13, dir:  1, speed: 26, gap: 70, type: 'alien' },
+    ];
+    for (const d of defs) {
+      const lane = {
+        row: d.row,
+        dir: d.dir,
+        speed: d.speed * speedMul,
+        gap: d.gap,
+        type: d.type,
+        items: [],
+      };
+      // Pre-populate so the lane isn't empty at start.
+      const spacing = 16 + lane.gap;
+      const count = Math.ceil((canvas.width + 32) / spacing) + 1;
+      let startX = lane.dir > 0 ? -spacing * count + Math.random() * spacing
+                                 : canvas.width + Math.random() * spacing;
+      for (let i = 0; i < count; i++) {
+        lane.items.push({ x: startX + i * spacing });
+      }
+      lanes.push(lane);
+    }
+  }
+
+  // ---------- Input ----------
+  function tryMove(dir) {
+    if (state !== 'playing') return;
+    if (player.moving) return;
+    let nc = player.col, nr = player.row;
+    if (dir === 'up')    nr -= 1;
+    if (dir === 'down')  nr += 1;
+    if (dir === 'left')  nc -= 1;
+    if (dir === 'right') nc += 1;
+    if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) return;
+    player.dir = dir;
+    player.col = nc;
+    player.row = nr;
+    player.tx = nc * TILE;
+    player.ty = nr * TILE;
+    player.moving = true;
+    player.moveT = 0;
+    if (nr < highestRowReached) {
+      score += 10;
+      highestRowReached = nr;
+      updateHUD();
+    }
+  }
+
+  window.addEventListener('keydown', (e) => {
+    const k = e.key.toLowerCase();
+    if (k === 'arrowup' || k === 'w')    { tryMove('up');    e.preventDefault(); }
+    if (k === 'arrowdown' || k === 's')  { tryMove('down');  e.preventDefault(); }
+    if (k === 'arrowleft' || k === 'a')  { tryMove('left');  e.preventDefault(); }
+    if (k === 'arrowright' || k === 'd') { tryMove('right'); e.preventDefault(); }
+    if (k === ' ' || k === 'enter') {
+      if (state === 'menu' || state === 'gameover' || state === 'win') startGame();
+    }
+  }, { passive: false });
+
+  document.querySelectorAll('.touch button').forEach(btn => {
+    const fire = (ev) => {
+      ev.preventDefault();
+      tryMove(btn.dataset.dir);
+    };
+    btn.addEventListener('touchstart', fire, { passive: false });
+    btn.addEventListener('mousedown', fire);
+  });
+
+  // ---------- HUD / overlay ----------
+  const scoreEl = document.getElementById('score');
+  const livesEl = document.getElementById('lives');
+  const levelEl = document.getElementById('level');
+  const overlay = document.getElementById('overlay');
+  const titleEl = document.getElementById('title');
+  const msgEl   = document.getElementById('message');
+  const startBtn = document.getElementById('startBtn');
+  function updateHUD() {
+    scoreEl.textContent = score;
+    livesEl.textContent = lives;
+    levelEl.textContent = level;
+  }
+  function showOverlay(title, msg, btn = 'START') {
+    titleEl.textContent = title;
+    msgEl.innerHTML = msg;
+    startBtn.textContent = btn;
+    overlay.classList.remove('hide');
+  }
+  function hideOverlay() { overlay.classList.add('hide'); }
+  startBtn.addEventListener('click', () => startGame());
+
+  function resetPlayer() {
+    player.col = 7; player.row = 17;
+    player.px = player.tx = 7 * TILE;
+    player.py = player.ty = 17 * TILE;
+    player.dir = 'up';
+    player.moving = false;
+    highestRowReached = 17;
+    invuln = 0.6;
+  }
+  function startGame() {
+    score = 0; lives = 3; level = 1;
+    buildLanes();
+    resetPlayer();
+    state = 'playing';
+    hideOverlay();
+    updateHUD();
+  }
+  function nextLevel() {
+    level += 1;
+    score += 100;
+    buildLanes();
+    resetPlayer();
+    state = 'playing';
+    updateHUD();
+    flashLevel();
+  }
+  let levelFlash = 0;
+  function flashLevel() { levelFlash = 1.2; }
+
+  function loseLife() {
+    lives -= 1;
+    updateHUD();
+    if (lives <= 0) {
+      state = 'gameover';
+      if (score > hi) {
+        hi = score;
+        localStorage.setItem('astrohop_hi', String(hi));
+        document.getElementById('hi').textContent = hi;
+      }
+      showOverlay('GAME OVER',
+        `Final score <b>${score}</b><br/>Press <b>SPACE</b> or tap START to retry.`,
+        'RETRY');
+    } else {
+      state = 'dead';
+      deathTimer = 0.8;
+    }
+  }
+
+  // ---------- Update ----------
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    update(dt);
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  function update(dt) {
+    // starfield always animates
+    for (const s of stars) {
+      s.y += s.v * dt * 0.15;
+      s.t += dt;
+      if (s.y > canvas.height) { s.y = -2; s.x = Math.random() * canvas.width; }
+    }
+    if (state === 'menu' || state === 'gameover' || state === 'win') return;
+    if (levelFlash > 0) levelFlash -= dt;
+    if (invuln > 0) invuln -= dt;
+
+    if (state === 'dead') {
+      deathTimer -= dt;
+      if (deathTimer <= 0) {
+        resetPlayer();
+        state = 'playing';
+      }
+      return;
+    }
+
+    // Player tween between tiles
+    if (player.moving) {
+      player.moveT += dt;
+      const t = Math.min(1, player.moveT / player.moveDur);
+      const ease = 1 - Math.pow(1 - t, 3);
+      player.px = lerp(player.px, player.tx, ease);
+      player.py = lerp(player.py, player.ty, ease);
+      if (t >= 1) {
+        player.px = player.tx;
+        player.py = player.ty;
+        player.moving = false;
+      }
+    } else {
+      player.px = player.tx;
+      player.py = player.ty;
+    }
+
+    // Lanes
+    for (const lane of lanes) {
+      for (const item of lane.items) {
+        item.x += lane.dir * lane.speed * dt;
+      }
+      // Wrap items
+      const spacing = 16 + lane.gap;
+      const totalWidth = spacing * lane.items.length;
+      for (const item of lane.items) {
+        if (lane.dir > 0 && item.x > canvas.width) item.x -= totalWidth;
+        if (lane.dir < 0 && item.x + 16 < 0)       item.x += totalWidth;
+      }
+    }
+
+    // Goal check - reached row 0
+    if (player.row === 0) {
+      score += 200;
+      state = 'win';
+      if (score > hi) {
+        hi = score;
+        localStorage.setItem('astrohop_hi', String(hi));
+        document.getElementById('hi').textContent = hi;
+      }
+      updateHUD();
+      setTimeout(() => {
+        if (state === 'win') {
+          nextLevel();
+        }
+      }, 900);
+      return;
+    }
+
+    // Collision
+    if (invuln <= 0) {
+      const lane = lanes.find(l => l.row === player.row);
+      if (lane) {
+        const px = player.px;
+        const py = player.py;
+        for (const item of lane.items) {
+          // Tight hitbox - 12px wide centered on 16px tile.
+          if (Math.abs((item.x + 8) - (px + 8)) < 11 &&
+              Math.abs((lane.row * TILE + 8) - (py + 8)) < 11) {
+            loseLife();
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  // ---------- Render ----------
+  function render() {
+    // Background gradient bands per zone
+    drawBackground();
+
+    // Stars
+    ctx.save();
+    for (const s of stars) {
+      const tw = 0.5 + 0.5 * Math.sin(s.t * 4);
+      ctx.fillStyle = s.s === 2 ? `rgba(232,241,255,${0.5 + tw * 0.5})`
+                                : `rgba(180,200,240,${0.3 + tw * 0.5})`;
+      ctx.fillRect(Math.floor(s.x), Math.floor(s.y), s.s, s.s);
+    }
+    ctx.restore();
+
+    // Top goal row - stargate slots
+    drawGoalRow();
+
+    // Lanes - draw hazards
+    for (const lane of lanes) {
+      for (const item of lane.items) {
+        drawHazard(lane, item.x);
+      }
+    }
+
+    // Safe zone glow lines
+    drawZoneAccents();
+
+    // Player
+    drawPlayer();
+
+    // Level flash banner
+    if (levelFlash > 0 && state === 'playing') {
+      const alpha = Math.min(1, levelFlash);
+      ctx.fillStyle = `rgba(108,240,255,${alpha * 0.85})`;
+      ctx.fillRect(0, canvas.height/2 - 14, canvas.width, 28);
+      ctx.fillStyle = '#001018';
+      ctx.font = 'bold 14px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`LEVEL ${level}`, canvas.width/2, canvas.height/2);
+    }
+  }
+
+  function drawBackground() {
+    // Dark space base
+    ctx.fillStyle = '#04030d';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Soft horizontal bands hinting at zones.
+    const band = (y0, y1, c1, c2) => {
+      const g = ctx.createLinearGradient(0, y0, 0, y1);
+      g.addColorStop(0, c1); g.addColorStop(1, c2);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, y0, canvas.width, y1 - y0);
+    };
+    band(0, TILE,             '#0a0f2a', '#04030d'); // goal row backdrop
+    band(2*TILE, 5*TILE,      'rgba(80,30,80,0.35)', 'rgba(80,30,80,0)');     // alien band
+    band(6*TILE, 10*TILE,     'rgba(30,40,90,0.35)', 'rgba(30,40,90,0)');     // debris field
+    band(11*TILE, 14*TILE,    'rgba(50,20,60,0.30)', 'rgba(50,20,60,0)');     // lower mixed
+    band(15*TILE, 18*TILE,    'rgba(20,60,80,0.30)', 'rgba(20,60,80,0)');     // launch pad
+  }
+
+  function drawZoneAccents() {
+    // Launch pad grid lines at bottom
+    ctx.strokeStyle = 'rgba(108,240,255,0.18)';
+    ctx.lineWidth = 1;
+    for (let y = 15*TILE; y < ROWS*TILE; y += 4) {
+      ctx.beginPath();
+      ctx.moveTo(0, y + 0.5);
+      ctx.lineTo(canvas.width, y + 0.5);
+      ctx.stroke();
+    }
+  }
+
+  function drawGoalRow() {
+    // 3 stargate slots across the top row.
+    const slots = [2, 6, 10]; // column offsets
+    for (const cx of slots) {
+      ctx.drawImage(cache.gate, cx * TILE, 0);
+    }
+    // Subtle moving glow
+    const t = performance.now() / 600;
+    ctx.fillStyle = `rgba(168,146,255,${0.15 + 0.1 * Math.sin(t)})`;
+    ctx.fillRect(0, TILE - 1, canvas.width, 1);
+  }
+
+  function drawHazard(lane, x) {
+    const y = lane.row * TILE;
+    let img;
+    switch (lane.type) {
+      case 'asteroid':  img = cache.asteroid; break;
+      case 'satellite': img = cache.satellite; break;
+      case 'rocket':    img = cache.rocket; break;
+      case 'ufo':       img = lane.dir > 0 ? cache.ufo_r : cache.ufo_l; break;
+      case 'alien':     img = lane.dir > 0 ? cache.alien_r : cache.alien_l; break;
+    }
+    if (!img) return;
+    // tiny vertical bobbing for alive feel
+    const bob = (lane.type === 'ufo' || lane.type === 'alien')
+      ? Math.round(Math.sin((x + performance.now() * 0.005)) * 1)
+      : 0;
+    ctx.drawImage(img, Math.round(x), y + bob);
+    // Asteroid spin shimmer
+    if (lane.type === 'asteroid') {
+      const shimmer = (Math.sin((x + performance.now() * 0.01)) + 1) * 0.5;
+      if (shimmer > 0.85) {
+        ctx.fillStyle = 'rgba(232,241,255,0.4)';
+        ctx.fillRect(Math.round(x) + 6, y + 4, 1, 1);
+      }
+    }
+  }
+
+  function drawPlayer() {
+    let img;
+    switch (player.dir) {
+      case 'up':    img = cache.astro_up; break;
+      case 'down':  img = cache.astro_down; break;
+      case 'left':  img = cache.astro_left; break;
+      case 'right': img = cache.astro_right; break;
+    }
+    if (state === 'dead') {
+      // Death burst
+      const t = 1 - (deathTimer / 0.8);
+      ctx.fillStyle = `rgba(255,95,176,${1 - t})`;
+      const r = 4 + t * 14;
+      ctx.beginPath();
+      ctx.arc(player.px + 8, player.py + 8, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(255,180,107,${1 - t})`;
+      ctx.beginPath();
+      ctx.arc(player.px + 8, player.py + 8, r * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+    // Blink while invulnerable
+    if (invuln > 0 && Math.floor(invuln * 12) % 2 === 0) return;
+    ctx.drawImage(img, Math.round(player.px), Math.round(player.py));
+  }
+
+  // Kick things off
+  showOverlay('ASTRO-HOP',
+    `Hop your astronaut up through debris and aliens to reach the <b>stargate</b>.<br/>` +
+    `<b>Arrow keys</b> or <b>WASD</b> to move. On touch, use the on-screen pad.`,
+    'START');
+  updateHUD();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
