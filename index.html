@@ -192,7 +192,7 @@
     </div>
   </div>
 
-  <footer>HI-SCORE <span id="hi">0</span></footer>
+  <footer>HI-SCORE <span id="hi">0</span> · <span id="muteLabel">SOUND ON</span> (press M)</footer>
 
 <script>
 (() => {
@@ -483,6 +483,146 @@
   }
   buildAll();
 
+  // ---------- Sound engine (Web Audio, all procedural) ----------
+  // Tiny 8-bit/sci-fi SFX synth. No external files - oscillators, noise bursts,
+  // and short envelopes drive everything. Audio context is created lazily on the
+  // first user gesture (required by browsers).
+  const SFX = (() => {
+    let ctx = null;
+    let master = null;
+    let muted = localStorage.getItem('astrohop_mute') === '1';
+
+    function ensure() {
+      if (ctx) return ctx;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = muted ? 0 : 0.35;
+      master.connect(ctx.destination);
+      return ctx;
+    }
+    function resume() {
+      const c = ensure();
+      if (c && c.state === 'suspended') c.resume();
+    }
+    function setMuted(m) {
+      muted = m;
+      localStorage.setItem('astrohop_mute', m ? '1' : '0');
+      if (master) master.gain.value = m ? 0 : 0.35;
+    }
+    function isMuted() { return muted; }
+
+    // Schedule an envelope: attack, decay+release. Returns the gain node.
+    function envelope(target, t0, a, d, peak = 1) {
+      target.gain.cancelScheduledValues(t0);
+      target.gain.setValueAtTime(0.0001, t0);
+      target.gain.exponentialRampToValueAtTime(peak, t0 + a);
+      target.gain.exponentialRampToValueAtTime(0.0001, t0 + a + d);
+    }
+
+    // A single tone with optional pitch sweep + 8-bit-ish square character.
+    function tone({ freq, freq2, dur = 0.12, type = 'square', peak = 0.4, a = 0.005, when = 0, detune = 0 }) {
+      const c = ensure(); if (!c) return;
+      const t0 = c.currentTime + when;
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t0);
+      o.detune.value = detune;
+      if (freq2 != null) {
+        o.frequency.exponentialRampToValueAtTime(Math.max(20, freq2), t0 + dur);
+      }
+      envelope(g, t0, a, dur, peak);
+      o.connect(g).connect(master);
+      o.start(t0);
+      o.stop(t0 + a + dur + 0.05);
+    }
+
+    // White-noise burst for explosions, hisses, fizzles.
+    function noise({ dur = 0.2, peak = 0.5, when = 0, hp = 0, lp = 8000, sweepLp }) {
+      const c = ensure(); if (!c) return;
+      const t0 = c.currentTime + when;
+      const bufSize = Math.floor(c.sampleRate * dur);
+      const buf = c.createBuffer(1, bufSize, c.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      const g = c.createGain();
+      let node = src;
+      if (hp > 0) {
+        const f = c.createBiquadFilter();
+        f.type = 'highpass'; f.frequency.value = hp;
+        node.connect(f); node = f;
+      }
+      const lpf = c.createBiquadFilter();
+      lpf.type = 'lowpass';
+      lpf.frequency.setValueAtTime(lp, t0);
+      if (sweepLp != null) lpf.frequency.exponentialRampToValueAtTime(Math.max(80, sweepLp), t0 + dur);
+      node.connect(lpf);
+      envelope(g, t0, 0.005, dur, peak);
+      lpf.connect(g).connect(master);
+      src.start(t0);
+      src.stop(t0 + dur + 0.05);
+    }
+
+    // ---- Named effects ----
+    function hop() {
+      // Short rising blip - classic 8-bit hop.
+      tone({ freq: 440, freq2: 880, dur: 0.07, type: 'square', peak: 0.25, a: 0.003 });
+    }
+    function death() {
+      // Descending sweep + noise crackle = explosion.
+      tone({ freq: 600, freq2: 60, dur: 0.45, type: 'sawtooth', peak: 0.35 });
+      tone({ freq: 300, freq2: 40, dur: 0.5,  type: 'square',   peak: 0.25, when: 0.02 });
+      noise({ dur: 0.45, peak: 0.55, hp: 200, lp: 6000, sweepLp: 300 });
+    }
+    function stargate() {
+      // Triumphant ascending arpeggio with a sci-fi shimmer.
+      const notes = [523.25, 659.25, 783.99, 1046.5]; // C E G C
+      notes.forEach((f, i) => tone({ freq: f, dur: 0.16, type: 'square', peak: 0.3, when: i * 0.07 }));
+      // Shimmer noise tail
+      noise({ dur: 0.4, peak: 0.18, hp: 3000, lp: 9000, sweepLp: 12000, when: notes.length * 0.07 });
+      // Sub-bass thump
+      tone({ freq: 220, freq2: 110, dur: 0.3, type: 'sine', peak: 0.4, when: 0 });
+    }
+    function levelUp() {
+      // Power-up sweep - sci-fi charge.
+      tone({ freq: 220, freq2: 1760, dur: 0.35, type: 'sawtooth', peak: 0.22 });
+      tone({ freq: 330, freq2: 1320, dur: 0.35, type: 'square',   peak: 0.18, when: 0.02 });
+      tone({ freq: 880, dur: 0.18, type: 'square', peak: 0.3, when: 0.36 });
+      tone({ freq: 1318.5, dur: 0.22, type: 'square', peak: 0.3, when: 0.46 });
+    }
+    function gameOver() {
+      // Descending mournful blips.
+      const notes = [523.25, 440, 349.23, 261.63, 196];
+      notes.forEach((f, i) => tone({ freq: f, dur: 0.22, type: 'square', peak: 0.28, when: i * 0.18 }));
+      noise({ dur: 0.6, peak: 0.15, hp: 100, lp: 1500, sweepLp: 200, when: 0.4 });
+    }
+    function startBeep() {
+      tone({ freq: 660, dur: 0.08, type: 'square', peak: 0.28 });
+      tone({ freq: 990, dur: 0.12, type: 'square', peak: 0.28, when: 0.09 });
+    }
+    function uiBlip() {
+      tone({ freq: 1200, freq2: 1800, dur: 0.05, type: 'square', peak: 0.18 });
+    }
+    // Random sci-fi buzz/zap - useful for ambient color or special hits.
+    function buzz() {
+      tone({ freq: 90, freq2: 60, dur: 0.18, type: 'sawtooth', peak: 0.18 });
+      noise({ dur: 0.18, peak: 0.18, hp: 1000, lp: 5000, sweepLp: 800 });
+    }
+
+    return { resume, setMuted, isMuted,
+             hop, death, stargate, levelUp, gameOver, startBeep, uiBlip, buzz };
+  })();
+
+  // Resume audio on first user gesture (browser autoplay policy).
+  const unlockAudio = () => { SFX.resume(); };
+  window.addEventListener('keydown', unlockAudio, { once: true });
+  window.addEventListener('pointerdown', unlockAudio, { once: true });
+  window.addEventListener('touchstart', unlockAudio, { once: true });
+
   // ---------- Starfield background ----------
   const stars = [];
   for (let i = 0; i < 80; i++) {
@@ -529,6 +669,8 @@
   let invuln = 0;
 
   document.getElementById('hi').textContent = hi;
+  document.getElementById('muteLabel').textContent =
+    SFX.isMuted() ? 'SOUND OFF' : 'SOUND ON';
 
   // Build lanes based on level
   let lanes = [];
@@ -594,6 +736,7 @@
       highestRowReached = nr;
       updateHUD();
     }
+    SFX.hop();
   }
 
   window.addEventListener('keydown', (e) => {
@@ -604,6 +747,11 @@
     if (k === 'arrowright' || k === 'd') { tryMove('right'); e.preventDefault(); }
     if (k === ' ' || k === 'enter') {
       if (state === 'menu' || state === 'gameover' || state === 'win') startGame();
+    }
+    if (k === 'm') {
+      SFX.setMuted(!SFX.isMuted());
+      document.getElementById('muteLabel').textContent = SFX.isMuted() ? 'SOUND OFF' : 'SOUND ON';
+      if (!SFX.isMuted()) SFX.uiBlip();
     }
   }, { passive: false });
 
@@ -648,6 +796,8 @@
     invuln = 0.6;
   }
   function startGame() {
+    SFX.resume();
+    SFX.startBeep();
     score = 0; lives = 3; level = 1;
     buildLanes();
     resetPlayer();
@@ -663,6 +813,7 @@
     state = 'playing';
     updateHUD();
     flashLevel();
+    SFX.levelUp();
   }
   let levelFlash = 0;
   function flashLevel() { levelFlash = 1.2; }
@@ -670,6 +821,7 @@
   function loseLife() {
     lives -= 1;
     updateHUD();
+    SFX.death();
     if (lives <= 0) {
       state = 'gameover';
       if (score > hi) {
@@ -677,6 +829,7 @@
         localStorage.setItem('astrohop_hi', String(hi));
         document.getElementById('hi').textContent = hi;
       }
+      setTimeout(() => SFX.gameOver(), 450);
       showOverlay('GAME OVER',
         `Final score <b>${score}</b><br/>Press <b>SPACE</b> or tap START to retry.`,
         'RETRY');
@@ -751,6 +904,7 @@
     if (player.row === 0) {
       score += 200;
       state = 'win';
+      SFX.stargate();
       if (score > hi) {
         hi = score;
         localStorage.setItem('astrohop_hi', String(hi));
