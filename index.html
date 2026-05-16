@@ -3,21 +3,31 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-<title>Astro-Hop — Space Frogger</title>
+<title>Picto's Space Crossing</title>
 <style>
   :root {
-    --bg: #05030f;
-    --panel: #0b0820;
-    --accent: #6cf0ff;
-    --accent2: #ff5fb0;
-    --text: #e8f1ff;
-    --dim: #8a93b8;
+    --bg: #0a0a1f;
+    --panel: #1a1d4a;
+    --navy: #1d2660;
+    --navy-deep: #0c0f2c;
+    --red: #e23446;
+    --red-deep: #a01e2a;
+    --white: #f5f1ff;
+    --lavender: #b9b3e0;
+    --lavender-dark: #7a72b8;
+    --gold: #ffe46b;
+    --cyan: #6cf0ff;
+    --text: #f5f1ff;
+    --dim: #b9b3e0;
+    --accent: #e23446;
+    --accent2: #ffe46b;
   }
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0;
     height: 100%;
-    background: radial-gradient(ellipse at 50% 30%, #14102d 0%, #05030f 60%, #02010a 100%);
+    background:
+      radial-gradient(ellipse at 50% 20%, #2a2e6e 0%, #14163a 45%, #0a0a1f 80%, #050514 100%);
     color: var(--text);
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     overflow: hidden;
@@ -38,28 +48,35 @@
   }
   header h1 {
     margin: 0;
-    font-size: 28px;
-    color: var(--accent);
+    font-size: 30px;
+    color: var(--white);
     text-shadow:
-      0 0 8px rgba(108,240,255,0.6),
-      0 2px 0 #000;
+      2px 2px 0 var(--red),
+      4px 4px 0 var(--navy),
+      0 0 14px rgba(255,228,107,0.35);
+    letter-spacing: 0.14em;
   }
+  header h1 span.red { color: var(--red); text-shadow: 2px 2px 0 var(--white), 4px 4px 0 var(--navy); }
   header p {
-    margin: 4px 0 0;
-    color: var(--dim);
+    margin: 6px 0 0;
+    color: var(--lavender);
     font-size: 12px;
+    letter-spacing: 0.18em;
   }
   .stage {
     position: relative;
     width: min(92vw, 560px);
     aspect-ratio: 7 / 9;
     background: #000;
-    border: 2px solid #1d1a3b;
-    border-radius: 10px;
+    border: 3px solid #0a0a14;
+    border-radius: 12px;
     box-shadow:
-      0 0 0 1px #2a2660 inset,
-      0 0 30px rgba(108,240,255,0.18),
-      0 12px 40px rgba(0,0,0,0.7);
+      0 0 0 2px var(--red) inset,
+      0 0 0 5px var(--navy) inset,
+      0 0 0 6px var(--gold) inset,
+      0 0 40px rgba(226,52,70,0.25),
+      0 0 80px rgba(108,240,255,0.12),
+      0 14px 40px rgba(0,0,0,0.7);
     overflow: hidden;
   }
   canvas {
@@ -78,54 +95,72 @@
     justify-content: space-between;
     padding: 10px 14px;
     font-size: 13px;
-    letter-spacing: 0.1em;
-    color: var(--text);
-    text-shadow: 0 1px 0 #000, 0 0 6px rgba(108,240,255,0.4);
+    letter-spacing: 0.12em;
+    color: var(--white);
+    text-shadow: 1px 1px 0 #000, 2px 2px 0 var(--navy-deep);
   }
   .hud .right { text-align: right; }
-  .hud b { color: var(--accent); font-weight: normal; }
+  .hud b { color: var(--gold); font-weight: normal; }
   .overlay {
     position: absolute;
     inset: 0;
-    background: rgba(2,1,10,0.78);
+    background:
+      linear-gradient(180deg,
+        rgba(29,38,96,0.55) 0%,
+        rgba(12,15,44,0.80) 35%,
+        rgba(12,15,44,0.85) 65%,
+        rgba(29,38,96,0.55) 100%);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 14px;
     text-align: center;
-    padding: 24px;
+    padding: 22px;
     backdrop-filter: blur(2px);
   }
   .overlay h2 {
     margin: 0;
-    color: var(--accent2);
-    font-size: 22px;
-    letter-spacing: 0.18em;
-    text-shadow: 0 0 10px rgba(255,95,176,0.6), 0 2px 0 #000;
+    color: var(--white);
+    font-size: 24px;
+    letter-spacing: 0.16em;
+    text-shadow:
+      2px 2px 0 var(--red),
+      4px 4px 0 var(--navy-deep),
+      0 0 14px rgba(255,228,107,0.4);
+    line-height: 1.05;
   }
+  .overlay h2 .accent { color: var(--gold); text-shadow: 2px 2px 0 var(--red), 4px 4px 0 var(--navy-deep); }
   .overlay p {
     margin: 0;
-    color: var(--dim);
+    color: var(--lavender);
     font-size: 12px;
-    max-width: 380px;
-    line-height: 1.55;
+    max-width: 400px;
+    line-height: 1.6;
   }
+  .overlay p b { color: var(--gold); font-weight: normal; }
   .overlay button {
-    margin-top: 6px;
-    background: var(--accent);
-    color: #001018;
+    margin-top: 8px;
+    background: var(--red);
+    color: var(--white);
     border: 0;
-    padding: 10px 18px;
+    padding: 12px 22px;
     border-radius: 4px;
     font-family: inherit;
-    font-size: 13px;
-    letter-spacing: 0.14em;
+    font-size: 14px;
+    letter-spacing: 0.18em;
     cursor: pointer;
-    box-shadow: 0 4px 0 #1b8aa3, 0 0 14px rgba(108,240,255,0.5);
-    transition: transform 0.05s ease;
+    box-shadow:
+      0 4px 0 var(--red-deep),
+      0 0 0 2px var(--white) inset,
+      0 0 18px rgba(226,52,70,0.55);
+    transition: transform 0.05s ease, box-shadow 0.05s ease;
   }
-  .overlay button:active { transform: translateY(2px); box-shadow: 0 2px 0 #1b8aa3; }
+  .overlay button:hover { background: #ff4658; }
+  .overlay button:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 var(--red-deep), 0 0 0 2px var(--white) inset;
+  }
   .hide { display: none !important; }
   footer {
     color: var(--dim);
@@ -144,15 +179,16 @@
     pointer-events: auto;
   }
   .touch button {
-    background: rgba(108,240,255,0.12);
-    border: 1px solid rgba(108,240,255,0.45);
-    color: var(--accent);
+    background: rgba(226,52,70,0.18);
+    border: 2px solid rgba(255,228,107,0.65);
+    color: var(--gold);
     font-size: 20px;
     border-radius: 8px;
     padding: 14px 0;
     font-family: inherit;
+    text-shadow: 1px 1px 0 #000;
   }
-  .touch button:active { background: rgba(108,240,255,0.3); }
+  .touch button:active { background: rgba(226,52,70,0.45); }
   .touch .up    { grid-column: 2; grid-row: 1; }
   .touch .left  { grid-column: 1; grid-row: 2; }
   .touch .down  { grid-column: 2; grid-row: 2; }
@@ -165,8 +201,8 @@
 </head>
 <body>
   <header>
-    <h1>ASTRO-HOP</h1>
-    <p>DODGE THE JUNK · REACH THE STARGATE</p>
+    <h1>PICTO'S <span class="red">SPACE</span> CROSSING</h1>
+    <p>DODGE THE JUNK · DUCK THE ALIENS · REACH THE STARGATE</p>
   </header>
 
   <div class="stage" id="stage">
@@ -176,13 +212,13 @@
       <div class="right">LIVES <b id="lives">3</b><br/>LEVEL <b id="level">1</b></div>
     </div>
     <div class="overlay" id="overlay">
-      <h2 id="title">ASTRO-HOP</h2>
+      <h2 id="title">PICTO'S<br/><span class="accent">SPACE CROSSING</span></h2>
       <p id="message">
-        Use <b>arrow keys</b> or <b>WASD</b> to hop your astronaut up through the
-        debris fields and alien lanes. Reach the stargate at the top.
-        Touch a hazard and you lose a life.
+        Hop <b>Picto</b> the astronaut up through asteroid fields and alien lanes
+        to reach one of the <b>stargates</b> at the top.<br/>
+        <b>Arrow keys</b> / <b>WASD</b> to move · <b>M</b> mutes sound · touch pad on mobile.
       </p>
-      <button id="startBtn">START</button>
+      <button id="startBtn">LAUNCH</button>
     </div>
     <div class="touch">
       <button class="up"    data-dir="up">▲</button>
@@ -208,239 +244,248 @@
 
   // ---------- Pixel-art sprite system ----------
   // Sprites are 16x16, drawn with a tiny palette. We render each sprite
-  // to an offscreen canvas once for speed.
+  // to an offscreen canvas once for speed. Palettes echo the Picto mascot:
+  // bold black outlines, white + lavender suit, red/gold/navy accents.
   const PALETTES = {
-    astro: ['#000000','#e8f1ff','#6cf0ff','#1a4f8c','#ffb86b','#ff5fb0','#222a44'],
-    junk:  ['#000000','#8a93b8','#3a3f5e','#ffb86b','#e8d36b','#6cf0ff'],
-    alien: ['#000000','#a3ff6c','#2f7a1f','#ff5fb0','#e8f1ff','#6cf0ff'],
-    ufo:   ['#000000','#c8c8d8','#6cf0ff','#1a4f8c','#ff5fb0','#ffe46b'],
-    gate:  ['#000000','#6cf0ff','#a892ff','#ff5fb0','#ffffff'],
+    //          0=outline   1=white    2=lavender 3=navy     4=red      5=gold     6=cyan
+    astro:    ['#0a0a14',  '#f5f1ff', '#b9b3e0', '#14163a', '#e23446', '#ffe46b', '#6cf0ff'],
+    //          0=outline   1=lavender 2=navy     3=gold     4=red      5=cyan
+    junk:     ['#0a0a14',  '#b9b3e0', '#3a3f7a', '#ffe46b', '#e23446', '#6cf0ff'],
+    //          0=outline   1=green    2=darkgrn  3=red      4=white    5=gold
+    alien:    ['#0a0a14',  '#7eff5c', '#2f7a1f', '#e23446', '#f5f1ff', '#ffe46b'],
+    //          0=outline   1=lavender 2=cyan     3=navy     4=red      5=gold    6=white
+    ufo:      ['#0a0a14',  '#b9b3e0', '#6cf0ff', '#14163a', '#e23446', '#ffe46b','#f5f1ff'],
+    //          0=outline   1=cyan     2=lavender 3=red      4=gold     5=white
+    gate:     ['#0a0a14',  '#6cf0ff', '#b9b3e0', '#e23446', '#ffe46b', '#f5f1ff'],
   };
 
   // 16x16 sprite definitions; digits index a palette, '.' = transparent.
   // Designed in monospace for readability.
+  // Astro palette: 0=outline 1=white 2=lavender 3=navy 4=red 5=gold 6=cyan
   const SPRITES = {
+    // Picto facing AWAY (up) — back of helmet + backpack with control panel
     astro_up: [
       '................',
-      '......11111.....',
-      '.....1222221....',
-      '....122222221...',
-      '....122111221...',
-      '....122212221...',
-      '....122111221...',
-      '....12222221....',
-      '.....1222221....',
-      '...1111111111...',
-      '..133311113331..',
-      '..133311113331..',
-      '..133311113331..',
-      '..1331....1331..',
-      '..1331....1331..',
-      '..1331....1331..',
+      '......00000.....',
+      '.....0222220....',
+      '....022222220...',
+      '....022222220...',
+      '....022222220...',
+      '....022222220...',
+      '....022222220...',
+      '.....0222220....',
+      '....011111110...',
+      '...01155551110..',
+      '...01156651110..',
+      '...01155551110..',
+      '...01111111110..',
+      '....010..010....',
+      '....000..000....',
     ],
+    // Picto facing camera (down) — visor with eyes, red chest patch
     astro_down: [
       '................',
-      '......11111.....',
-      '.....1222221....',
-      '....122222221...',
-      '....122222221...',
-      '....122222221...',
-      '....122222221...',
-      '....122222221...',
-      '.....1222221....',
-      '...1111111111...',
-      '..133311113331..',
-      '..133311113331..',
-      '..133311113331..',
-      '..1331....1331..',
-      '..1331....1331..',
-      '..1331....1331..',
+      '......00000.....',
+      '.....0111110....',
+      '....011222110...',
+      '....013333310...',
+      '....036333630...',
+      '....033333330...',
+      '....013333310...',
+      '.....0111110....',
+      '....011111110...',
+      '...01142244110..',
+      '...01144444110..',
+      '...01142244110..',
+      '...01111111110..',
+      '....010..010....',
+      '....000..000....',
     ],
     astro_left: [
       '................',
-      '.....11111......',
-      '....1222221.....',
-      '...12222221.....',
-      '...12211221.....',
-      '...12211221.....',
-      '...12222221.....',
-      '...12222221.....',
-      '....1222221.....',
-      '..1111111111....',
-      '.13331.13331....',
-      '.13331.13331....',
-      '.13331.13331....',
-      '.13331..1331....',
-      '.1331...1331....',
-      '.1331...1331....',
+      '......00000.....',
+      '.....0111110....',
+      '....011222110...',
+      '....033333310...',
+      '....063333310...',
+      '....033333310...',
+      '....011333110...',
+      '.....0111110....',
+      '....011111110...',
+      '....01144110....',
+      '...0144444110...',
+      '...0142244110...',
+      '....011110000...',
+      '....010..010....',
+      '....000..000....',
     ],
     astro_right: [
       '................',
-      '......11111.....',
-      '.....1222221....',
-      '.....12222221...',
-      '.....12211221...',
-      '.....12211221...',
-      '.....12222221...',
-      '.....12222221...',
-      '.....1222221....',
-      '....1111111111..',
-      '....13331.13331.',
-      '....13331.13331.',
-      '....13331.13331.',
-      '....1331..13331.',
-      '....1331...1331.',
-      '....1331...1331.',
+      '......00000.....',
+      '.....0111110....',
+      '....011222110...',
+      '....013333330...',
+      '....013333360...',
+      '....013333330...',
+      '....011333110...',
+      '.....0111110....',
+      '....011111110...',
+      '....011441100...',
+      '...0114444410...',
+      '...0114422410...',
+      '....000011110...',
+      '....010..010....',
+      '....000..000....',
     ],
-    // Asteroid / space junk
+    // Asteroid with mineral specks (1=lavender 2=navy 3=gold 4=red)
     asteroid: [
       '................',
-      '.....11111......',
-      '....1222221.....',
-      '...122223221....',
-      '..12223333221...',
-      '..12233222321...',
-      '.1222332223221..',
-      '.1223322333221..',
-      '.1233322232321..',
-      '.1223333223221..',
-      '..12333222321...',
-      '..12223333221...',
-      '...122223221....',
-      '....1222221.....',
-      '.....11111......',
+      '.....00000......',
+      '....0111110.....',
+      '...011121110....',
+      '..01122112210...',
+      '..01211221110...',
+      '.0112113122110..',
+      '.0121121211210..',
+      '.0112112122110..',
+      '.0121131211210..',
+      '..01112141110...',
+      '..01122112110...',
+      '...011211110....',
+      '....0111110.....',
+      '.....00000......',
       '................',
     ],
-    // Satellite debris (rectangular junk with solar panel)
+    // Battered satellite with solar wings (1=lavender 2=navy 3=gold 4=red 5=cyan)
     satellite: [
       '................',
-      '................',
-      '..1111111111....',
-      '..1555555551....',
-      '..1551155151....',
-      '..1555555551....',
-      '..1551155151....',
-      '..1555555551....',
-      '..1111111111....',
-      '......11........',
-      '......11........',
-      '..15151511515...',
-      '..15151511515...',
-      '..15151511515...',
-      '..11111111111...',
-      '................',
+      '...000......000.',
+      '..03330....03330',
+      '..03330....03330',
+      '..03330....03330',
+      '..03330....03330',
+      '...000......000.',
+      '....00000000....',
+      '...022222220....',
+      '...021414120....',
+      '...021441120....',
+      '...022222220....',
+      '....00000000....',
+      '......000.......',
+      '.....03330......',
+      '......000.......',
     ],
-    // Rocket booster debris
+    // Rocket booster debris with flame tail (1=lavender 2=navy 3=gold 4=red 5=cyan)
     rocket: [
       '................',
-      '......111.......',
-      '.....12221......',
-      '....1222221.....',
-      '....1233321.....',
-      '....1233321.....',
-      '....1233321.....',
-      '....1233321.....',
-      '....1233321.....',
-      '....1233321.....',
-      '...112333211....',
-      '..12 13332131...',
-      '.1331 12321331..',
-      '.131  .121..131.',
-      '.11...1431..11..',
-      '......1441......',
+      '......000.......',
+      '.....01110......',
+      '.....01210......',
+      '.....01210......',
+      '.....04210......',
+      '.....04210......',
+      '....011110......',
+      '....011110......',
+      '...0133210......',
+      '..01331220......',
+      '.013112220......',
+      '..01342130......',
+      '...033432.......',
+      '....033430......',
+      '.....033........',
     ],
-    // Alien ship (saucer)
+    // Alien saucer with dome pilot (1=lavender 2=cyan 3=navy 4=red 5=gold 6=white)
     ufo_l: [
       '................',
       '................',
-      '......2222......',
-      '.....233332.....',
-      '..1112333321111.',
-      '.122222222222221',
-      '.155544444444551',
-      '.1115555555 5111',
-      '..1115553555111.',
-      '....11122 211...',
-      '.....3.323.3....',
-      '.....3.323.3....',
-      '.....6.626.6....',
-      '................',
+      '......0000......',
+      '.....022220.....',
+      '....02266220....',
+      '....02666620....',
+      '...0022222200...',
+      '..05551111155..0',
+      '.05544444444550.',
+      '..00111111110...',
+      '....0000000.....',
+      '....02..02..02..',
+      '...02..02..02...',
+      '..02..02..02....',
       '................',
       '................',
     ],
     ufo_r: [
       '................',
       '................',
-      '......2222......',
-      '.....233332.....',
-      '.1111233322111..',
-      '122222222222221.',
-      '155544444444551.',
-      '1115555555 5111.',
-      '.111555355 511..',
-      '...112225 211...',
-      '....3.323.3.....',
-      '....3.323.3.....',
-      '....6.626.6.....',
-      '................',
+      '......0000......',
+      '.....022220.....',
+      '....02266220....',
+      '....02666620....',
+      '...0022222200...',
+      '0..05511111555..',
+      '.05544444444550.',
+      '...01111111100..',
+      '.....0000000....',
+      '..02..02..02....',
+      '...02..02..02...',
+      '....02..02..02..',
       '................',
       '................',
     ],
-    // Alien creature (mini ship pilot)
+    // Little green alien (1=green 2=darkgrn 3=red 4=white 5=gold)
     alien_l: [
       '................',
-      '......22222.....',
-      '.....2111112....',
-      '....211131112...',
-      '....211131112...',
-      '....211111112...',
-      '.....2444442....',
-      '....24411442....',
-      '...2444444442...',
-      '...2411211142...',
-      '...2444444442...',
-      '...2.2....2.2...',
-      '..22.22..22.22..',
-      '..2..22..22..2..',
-      '..2...2..2...2..',
-      '.....2....2.....',
+      '......00000.....',
+      '.....0111110....',
+      '....012222210...',
+      '....014114210...',
+      '....011111210...',
+      '....012222210...',
+      '....012222210...',
+      '.....0111110....',
+      '....011111110...',
+      '...0133333310...',
+      '...0133333310...',
+      '...0133333310...',
+      '....01101100....',
+      '....010..010....',
+      '....000..000....',
     ],
     alien_r: [
       '................',
-      '......22222.....',
-      '.....2111112....',
-      '....211131112...',
-      '....211131112...',
-      '....211111112...',
-      '.....2444442....',
-      '....24411442....',
-      '...2444444442...',
-      '...2411211142...',
-      '...2444444442...',
-      '...2.2....2.2...',
-      '..22.22..22.22..',
-      '..2..22..22..2..',
-      '..2...2..2...2..',
-      '.....2....2.....',
+      '......00000.....',
+      '.....0111110....',
+      '....012222210...',
+      '....012411410...',
+      '....012111110...',
+      '....012222210...',
+      '....012222210...',
+      '.....0111110....',
+      '....011111110...',
+      '...0133333310...',
+      '...0133333310...',
+      '...0133333310...',
+      '....01101100....',
+      '....010..010....',
+      '....000..000....',
     ],
-    // Stargate goal slot
+    // Stargate portal (1=cyan 2=lavender 3=red 4=gold 5=white)
     gate: [
-      '..1111111111....',
-      '.122222222221...',
-      '.123333333321...',
-      '.123444444321...',
-      '.123422224321...',
-      '.123422224321...',
-      '.123422224321...',
-      '.123422224321...',
-      '.123422224321...',
-      '.123422224321...',
-      '.123422224321...',
-      '.123422224321...',
-      '.123444444321...',
-      '.123333333321...',
-      '.122222222221...',
-      '..1111111111....',
+      '...0000000000...',
+      '..045544445540..',
+      '.04544444444540.',
+      '.04444222244440.',
+      '.04432211223440.',
+      '.04321155512340.',
+      '.04321551155340.',
+      '.04321515551340.',
+      '.04321551155340.',
+      '.04321155512340.',
+      '.04432211223440.',
+      '.04444222244440.',
+      '.04544444444540.',
+      '..045544445540..',
+      '...0444444440...',
+      '....00000000....',
     ],
   };
 
@@ -856,7 +901,20 @@
       s.t += dt;
       if (s.y > canvas.height) { s.y = -2; s.x = Math.random() * canvas.width; }
     }
-    if (state === 'menu' || state === 'gameover' || state === 'win') return;
+    // Keep lanes animating on the title/gameover screens for visual life.
+    if (state === 'menu' || state === 'gameover') {
+      for (const lane of lanes) {
+        for (const item of lane.items) item.x += lane.dir * lane.speed * dt;
+        const spacing = 16 + lane.gap;
+        const totalWidth = spacing * lane.items.length;
+        for (const item of lane.items) {
+          if (lane.dir > 0 && item.x > canvas.width) item.x -= totalWidth;
+          if (lane.dir < 0 && item.x + 16 < 0)       item.x += totalWidth;
+        }
+      }
+      return;
+    }
+    if (state === 'win') return;
     if (levelFlash > 0) levelFlash -= dt;
     if (invuln > 0) invuln -= dt;
 
@@ -984,27 +1042,30 @@
   }
 
   function drawBackground() {
-    // Dark space base
-    ctx.fillStyle = '#04030d';
+    // Deep navy space base
+    ctx.fillStyle = '#0c0f2c';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Soft horizontal bands hinting at zones.
+    // Soft horizontal bands echoing the mascot's navy + red palette.
     const band = (y0, y1, c1, c2) => {
       const g = ctx.createLinearGradient(0, y0, 0, y1);
       g.addColorStop(0, c1); g.addColorStop(1, c2);
       ctx.fillStyle = g;
       ctx.fillRect(0, y0, canvas.width, y1 - y0);
     };
-    band(0, TILE,             '#0a0f2a', '#04030d'); // goal row backdrop
-    band(2*TILE, 5*TILE,      'rgba(80,30,80,0.35)', 'rgba(80,30,80,0)');     // alien band
-    band(6*TILE, 10*TILE,     'rgba(30,40,90,0.35)', 'rgba(30,40,90,0)');     // debris field
-    band(11*TILE, 14*TILE,    'rgba(50,20,60,0.30)', 'rgba(50,20,60,0)');     // lower mixed
-    band(15*TILE, 18*TILE,    'rgba(20,60,80,0.30)', 'rgba(20,60,80,0)');     // launch pad
+    band(0, 2*TILE,           '#1d2660', '#0c0f2c');                            // stargate backdrop (navy)
+    band(2*TILE, 5*TILE,      'rgba(160,30,42,0.32)', 'rgba(160,30,42,0)');     // alien band - red wash
+    band(5*TILE, 6*TILE,      'rgba(255,228,107,0.10)', 'rgba(255,228,107,0)'); // safe glow
+    band(6*TILE, 10*TILE,     'rgba(58,63,122,0.45)', 'rgba(58,63,122,0.10)');  // debris field - blue
+    band(10*TILE, 11*TILE,    'rgba(255,228,107,0.10)', 'rgba(255,228,107,0)'); // safe glow
+    band(11*TILE, 14*TILE,    'rgba(160,30,42,0.28)', 'rgba(160,30,42,0)');     // lower mixed - red wash
+    band(14*TILE, 15*TILE,    'rgba(255,228,107,0.12)', 'rgba(255,228,107,0)'); // safe glow
+    band(15*TILE, 18*TILE,    'rgba(108,240,255,0.18)', 'rgba(108,240,255,0.05)'); // launch pad - cyan
   }
 
   function drawZoneAccents() {
     // Launch pad grid lines at bottom
-    ctx.strokeStyle = 'rgba(108,240,255,0.18)';
+    ctx.strokeStyle = 'rgba(108,240,255,0.28)';
     ctx.lineWidth = 1;
     for (let y = 15*TILE; y < ROWS*TILE; y += 4) {
       ctx.beginPath();
@@ -1012,18 +1073,34 @@
       ctx.lineTo(canvas.width, y + 0.5);
       ctx.stroke();
     }
+    // Gold dashed line marking the safe-row boundaries.
+    ctx.strokeStyle = 'rgba(255,228,107,0.45)';
+    ctx.setLineDash([3, 3]);
+    for (const r of [5, 10, 14]) {
+      ctx.beginPath();
+      ctx.moveTo(0, r * TILE + TILE - 0.5);
+      ctx.lineTo(canvas.width, r * TILE + TILE - 0.5);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    // Red top border under the stargate row.
+    ctx.fillStyle = '#e23446';
+    ctx.fillRect(0, 2*TILE - 1, canvas.width, 1);
+    ctx.fillStyle = '#ffe46b';
+    ctx.fillRect(0, 2*TILE, canvas.width, 1);
   }
 
   function drawGoalRow() {
-    // 3 stargate slots across the top row.
-    const slots = [2, 6, 10]; // column offsets
+    // 5 stargate slots evenly across the top row.
+    const slots = [1, 4, 7, 10, 13];
     for (const cx of slots) {
       ctx.drawImage(cache.gate, cx * TILE, 0);
     }
-    // Subtle moving glow
-    const t = performance.now() / 600;
-    ctx.fillStyle = `rgba(168,146,255,${0.15 + 0.1 * Math.sin(t)})`;
-    ctx.fillRect(0, TILE - 1, canvas.width, 1);
+    // Pulsing glow on the stargate row.
+    const t = performance.now() / 400;
+    const pulse = 0.4 + 0.4 * Math.sin(t);
+    ctx.fillStyle = `rgba(108,240,255,${pulse * 0.22})`;
+    ctx.fillRect(0, 0, canvas.width, TILE);
   }
 
   function drawHazard(lane, x) {
@@ -1079,11 +1156,8 @@
     ctx.drawImage(img, Math.round(player.px), Math.round(player.py));
   }
 
-  // Kick things off
-  showOverlay('ASTRO-HOP',
-    `Hop your astronaut up through debris and aliens to reach the <b>stargate</b>.<br/>` +
-    `<b>Arrow keys</b> or <b>WASD</b> to move. On touch, use the on-screen pad.`,
-    'START');
+  // Kick things off - pre-populate lanes so the title screen has animated debris.
+  buildLanes();
   updateHUD();
   requestAnimationFrame(frame);
 })();
