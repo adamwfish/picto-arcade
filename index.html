@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 <title>Picto's Space Crossing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0a0a1f;
@@ -48,20 +51,36 @@
   }
   header h1 {
     margin: 0;
-    font-size: 30px;
-    color: var(--white);
+    font-family: 'Cinzel', 'Georgia', serif;
+    font-weight: 900;
+    font-size: 46px;
+    line-height: 1;
+    color: var(--red);
+    letter-spacing: 0.04em;
     text-shadow:
-      2px 2px 0 var(--red),
-      4px 4px 0 var(--navy),
-      0 0 14px rgba(255,228,107,0.35);
-    letter-spacing: 0.14em;
+      0 0 2px var(--red),
+      0 0 8px var(--red),
+      0 0 18px rgba(226,52,70,0.85),
+      0 0 36px rgba(226,52,70,0.55),
+      2px 3px 0 #2a0510;
+    filter: drop-shadow(0 0 1px rgba(255,255,255,0.05));
   }
-  header h1 span.red { color: var(--red); text-shadow: 2px 2px 0 var(--white), 4px 4px 0 var(--navy); }
+  header h1 span.red {
+    color: var(--red);
+    text-shadow:
+      0 0 2px var(--red),
+      0 0 8px var(--red),
+      0 0 18px rgba(226,52,70,0.85),
+      0 0 36px rgba(226,52,70,0.55),
+      2px 3px 0 #2a0510;
+  }
   header p {
-    margin: 6px 0 0;
+    margin: 8px 0 0;
+    font-family: 'Press Start 2P', ui-monospace, monospace;
     color: var(--lavender);
-    font-size: 12px;
-    letter-spacing: 0.18em;
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-shadow: 0 0 6px rgba(108,240,255,0.4);
   }
   .stage {
     position: relative;
@@ -94,8 +113,10 @@
     display: flex;
     justify-content: space-between;
     padding: 10px 14px;
-    font-size: 13px;
-    letter-spacing: 0.12em;
+    font-family: 'Press Start 2P', ui-monospace, monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    line-height: 1.6;
     color: var(--white);
     text-shadow: 1px 1px 0 #000, 2px 2px 0 var(--navy-deep);
   }
@@ -121,39 +142,53 @@
   }
   .overlay h2 {
     margin: 0;
-    color: var(--white);
-    font-size: 24px;
-    letter-spacing: 0.16em;
+    font-family: 'Cinzel', 'Georgia', serif;
+    font-weight: 900;
+    color: var(--red);
+    font-size: 40px;
+    letter-spacing: 0.04em;
+    line-height: 0.95;
     text-shadow:
-      2px 2px 0 var(--red),
-      4px 4px 0 var(--navy-deep),
-      0 0 14px rgba(255,228,107,0.4);
-    line-height: 1.05;
+      0 0 2px var(--red),
+      0 0 10px var(--red),
+      0 0 22px rgba(226,52,70,0.85),
+      0 0 42px rgba(226,52,70,0.6),
+      2px 3px 0 #2a0510;
   }
-  .overlay h2 .accent { color: var(--gold); text-shadow: 2px 2px 0 var(--red), 4px 4px 0 var(--navy-deep); }
+  .overlay h2 .accent {
+    color: var(--red);
+    text-shadow:
+      0 0 2px var(--red),
+      0 0 10px var(--red),
+      0 0 22px rgba(226,52,70,0.85),
+      0 0 42px rgba(226,52,70,0.6),
+      2px 3px 0 #2a0510;
+  }
   .overlay p {
     margin: 0;
+    font-family: 'Press Start 2P', ui-monospace, monospace;
     color: var(--lavender);
-    font-size: 12px;
+    font-size: 9px;
     max-width: 400px;
-    line-height: 1.6;
+    line-height: 1.9;
+    letter-spacing: 0.06em;
   }
   .overlay p b { color: var(--gold); font-weight: normal; }
   .overlay button {
-    margin-top: 8px;
+    margin-top: 10px;
     background: var(--red);
     color: var(--white);
     border: 0;
     padding: 12px 22px;
     border-radius: 4px;
-    font-family: inherit;
-    font-size: 14px;
-    letter-spacing: 0.18em;
+    font-family: 'Press Start 2P', ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: 0.16em;
     cursor: pointer;
     box-shadow:
       0 4px 0 var(--red-deep),
       0 0 0 2px var(--white) inset,
-      0 0 18px rgba(226,52,70,0.55);
+      0 0 22px rgba(226,52,70,0.7);
     transition: transform 0.05s ease, box-shadow 0.05s ease;
   }
   .overlay button:hover { background: #ff4658; }
@@ -163,10 +198,12 @@
   }
   .hide { display: none !important; }
   footer {
-    color: var(--dim);
-    font-size: 11px;
+    font-family: 'Press Start 2P', ui-monospace, monospace;
+    color: var(--lavender);
+    font-size: 8px;
     letter-spacing: 0.14em;
     text-align: center;
+    line-height: 1.6;
   }
   .touch {
     position: absolute;
@@ -337,79 +374,81 @@
       '....010..010....',
       '....000..000....',
     ],
-    // Asteroid with mineral specks (1=lavender 2=navy 3=gold 4=red)
+    // Asteroid - jagged rock with craters and mineral specks
+    // (junk: 0=outline 1=lavender 2=navy 3=gold 4=red 5=cyan)
     asteroid: [
       '................',
       '.....00000......',
       '....0111110.....',
+      '...011212110....',
+      '..01112221110...',
+      '..01211211110...',
+      '.0112112113210..',
+      '.0111111122110..',
+      '.0112113112110..',
+      '.0111111121110..',
+      '..01211111110...',
+      '..01112112110...',
       '...011121110....',
-      '..01122112210...',
-      '..01211221110...',
-      '.0112113122110..',
-      '.0121121211210..',
-      '.0112112122110..',
-      '.0121131211210..',
-      '..01112141110...',
-      '..01122112110...',
-      '...011211110....',
       '....0111110.....',
       '.....00000......',
       '................',
     ],
-    // Battered satellite with solar wings (1=lavender 2=navy 3=gold 4=red 5=cyan)
+    // Satellite - clearly a satellite: center body with solar wing panels
     satellite: [
       '................',
-      '...000......000.',
-      '..03330....03330',
-      '..03330....03330',
-      '..03330....03330',
-      '..03330....03330',
-      '...000......000.',
-      '....00000000....',
-      '...022222220....',
-      '...021414120....',
-      '...021441120....',
-      '...022222220....',
-      '....00000000....',
-      '......000.......',
-      '.....03330......',
-      '......000.......',
-    ],
-    // Rocket booster debris with flame tail (1=lavender 2=navy 3=gold 4=red 5=cyan)
-    rocket: [
       '................',
-      '......000.......',
-      '.....01110......',
-      '.....01210......',
-      '.....01210......',
-      '.....04210......',
-      '.....04210......',
-      '....011110......',
-      '....011110......',
-      '...0133210......',
-      '..01331220......',
-      '.013112220......',
-      '..01342130......',
-      '...033432.......',
-      '....033430......',
-      '.....033........',
+      '0000........0000',
+      '0330........0330',
+      '0330...00...0330',
+      '0330..0220..0330',
+      '0030..0220..0300',
+      '0330..0220..0330',
+      '0330..0220..0330',
+      '0030..0220..0300',
+      '0330..0220..0330',
+      '0330...00...0330',
+      '0000........0000',
+      '.......00.......',
+      '......0..0......',
+      '................',
     ],
-    // Alien saucer with dome pilot (1=lavender 2=cyan 3=navy 4=red 5=gold 6=white)
+    // Rocket - vertical rocket with fins and flame tail
+    rocket: [
+      '......00........',
+      '.....0220.......',
+      '.....0220.......',
+      '....011110......',
+      '....011110......',
+      '....015510......',
+      '....011110......',
+      '....044440......',
+      '....011110......',
+      '....011110......',
+      '...01122110.....',
+      '..010111111010..',
+      '..010111111010..',
+      '...00444440.....',
+      '....033330......',
+      '.....030........',
+    ],
+    // UFO - classic flying saucer with cyan-windowed dome and underglow beam
+    // (ufo: 0=outline 1=lavender 2=cyan 3=navy 4=red 5=gold 6=white)
     ufo_l: [
       '................',
       '................',
       '......0000......',
       '.....022220.....',
       '....02266220....',
-      '....02666620....',
+      '....02222220....',
       '...0022222200...',
-      '..05551111155..0',
-      '.05544444444550.',
-      '..00111111110...',
-      '....0000000.....',
-      '....02..02..02..',
-      '...02..02..02...',
-      '..02..02..02....',
+      '.00333333333300.',
+      '.04444444444440.',
+      '.05533333333550.',
+      '..004444444400..',
+      '....0.....0.....',
+      '...0.......0....',
+      '..0.........0...',
       '................',
       '................',
     ],
@@ -419,34 +458,35 @@
       '......0000......',
       '.....022220.....',
       '....02266220....',
-      '....02666620....',
+      '....02222220....',
       '...0022222200...',
-      '0..05511111555..',
-      '.05544444444550.',
-      '...01111111100..',
-      '.....0000000....',
-      '..02..02..02....',
-      '...02..02..02...',
-      '....02..02..02..',
+      '.00333333333300.',
+      '.04444444444440.',
+      '.05533333333550.',
+      '..004444444400..',
+      '....0.....0.....',
+      '...0.......0....',
+      '..0.........0...',
       '................',
       '................',
     ],
-    // Little green alien (1=green 2=darkgrn 3=red 4=white 5=gold)
+    // Little green alien - classic big-eyed creature with red mouth
+    // (alien: 0=outline 1=green 2=darkgrn 3=red 4=white 5=gold)
     alien_l: [
       '................',
       '......00000.....',
       '.....0111110....',
-      '....012222210...',
-      '....014114210...',
-      '....011111210...',
-      '....012222210...',
-      '....012222210...',
-      '.....0111110....',
       '....011111110...',
-      '...0133333310...',
-      '...0133333310...',
-      '...0133333310...',
-      '....01101100....',
+      '...01111111110..',
+      '...0104110410...',
+      '...0104110410...',
+      '...01111111110..',
+      '....011311110...',
+      '.....01110......',
+      '....011111110...',
+      '...01222222210..',
+      '...01222222210..',
+      '....011111110...',
       '....010..010....',
       '....000..000....',
     ],
@@ -454,17 +494,17 @@
       '................',
       '......00000.....',
       '.....0111110....',
-      '....012222210...',
-      '....012411410...',
-      '....012111110...',
-      '....012222210...',
-      '....012222210...',
-      '.....0111110....',
       '....011111110...',
-      '...0133333310...',
-      '...0133333310...',
-      '...0133333310...',
-      '....01101100....',
+      '...01111111110..',
+      '...0104110410...',
+      '...0104110410...',
+      '...01111111110..',
+      '....011131110...',
+      '.....01110......',
+      '....011111110...',
+      '...01222222210..',
+      '...01222222210..',
+      '....011111110...',
       '....010..010....',
       '....000..000....',
     ],
