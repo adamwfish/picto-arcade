@@ -5,3 +5,6 @@ dist/
 .vite/
 node_modules/.tmp/
 *.tsbuildinfo
+
+# Generated single-file build artifact (produced by `npm run build:single`)
+/Robo-Picto-Space-Runner-Boston.html
