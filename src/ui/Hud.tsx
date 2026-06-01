@@ -65,7 +65,10 @@ export function Hud({ getHud }: Props) {
             POS {h.position}/{h.totalRacers}
           </div>
         )}
-        {h.totalCheckpoints > 0 && (
+        {h.totalLaps > 0 && (
+          <div className="hud-label">LAP {Math.min(h.lap, h.totalLaps)}/{h.totalLaps}</div>
+        )}
+        {h.totalLaps > 0 && h.totalCheckpoints > 0 && (
           <div className="hud-label">GATE {h.checkpoint}/{h.totalCheckpoints}</div>
         )}
       </div>

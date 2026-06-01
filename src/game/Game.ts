@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { FLIGHT, GRAIL, PALETTE, hex } from './constants';
 import type { GameMode, GamePhase, HudState, RunResult } from './types';
 import { World } from './world/World';
+import { Course } from './world/Course';
 import { Ship } from './ship/Ship';
 import { Input } from './systems/Input';
 import { ChaseCamera } from './systems/ChaseCamera';
@@ -23,19 +24,21 @@ interface ModeConfig {
   timeIsElapsed: boolean;
   comics: number;
   obstacles: number;
-  usesCheckpoints: boolean;
+  laps: number; // 0 => free roam (no lap racing)
   showPosition: boolean;
 }
 
 const MODE_CONFIG: Record<GameMode, ModeConfig> = {
-  story: { timeLimit: 160, timeIsElapsed: false, comics: 70, obstacles: 46, usesCheckpoints: true, showPosition: true },
-  timetrial: { timeLimit: 0, timeIsElapsed: true, comics: 40, obstacles: 40, usesCheckpoints: true, showPosition: false },
-  comichunt: { timeLimit: 90, timeIsElapsed: false, comics: 120, obstacles: 30, usesCheckpoints: false, showPosition: false },
-  endless: { timeLimit: 0, timeIsElapsed: true, comics: 90, obstacles: 50, usesCheckpoints: false, showPosition: false },
+  story: { timeLimit: 180, timeIsElapsed: false, comics: 80, obstacles: 46, laps: 2, showPosition: true },
+  timetrial: { timeLimit: 0, timeIsElapsed: true, comics: 50, obstacles: 40, laps: 2, showPosition: false },
+  comichunt: { timeLimit: 90, timeIsElapsed: false, comics: 130, obstacles: 30, laps: 0, showPosition: false },
+  endless: { timeLimit: 0, timeIsElapsed: true, comics: 90, obstacles: 50, laps: 0, showPosition: false },
 };
 
-const CHECKPOINT_RADIUS = 30;
+const CHECKPOINT_RADIUS = 24;
 const SHIP_RADIUS = 2.6;
+const PAD_COOLDOWN = 0.7;
+const PAD_BOOST_TIME = 1.3;
 
 export interface GameCallbacks {
   onPhase?: (phase: GamePhase) => void;
@@ -66,6 +69,7 @@ export class Game {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
   private world: World;
+  private course: Course;
   private ship = new Ship();
   private cam: ChaseCamera;
   private input = new Input();
@@ -100,9 +104,13 @@ export class Game {
   private score = 0;
   private streak = 0;
   private invuln = 0;
-  private cpIndex = 0;
+  private nextGate = 1; // index into course.checkpoints we're heading for
+  private gatesPassed = 0;
+  private lap = 1;
   private rivals: number[] = [];
   private countdown = 0;
+  private padCooldown = 0;
+  private padBoostTimer = 0;
 
   private last = performance.now();
   private raf = 0;
@@ -120,6 +128,8 @@ export class Game {
 
     this.world = new World();
     this.scene.add(this.world.root);
+    this.course = new Course();
+    this.scene.add(this.course.root);
     this.scene.add(this.ship.root);
     this.scene.add(this.comicGroup);
     this.scene.add(this.obstacleGroup);
@@ -188,13 +198,15 @@ export class Game {
 
     this.spawnEntities();
 
-    // Reset flight & run state.
-    const start = this.world.startPosition();
+    // Reset flight & run state — start on the course start line.
+    const start = this.course.startPosition;
     this.pos.copy(start);
-    this.cpIndex = 0;
-    // Aim toward the first checkpoint.
-    const aimTarget = this.config.usesCheckpoints ? this.world.checkpoints[0] : new THREE.Vector3(start.x - 100, start.y, start.z - 100);
-    this.yaw = Math.atan2(aimTarget.x - start.x, aimTarget.z - start.z) + Math.PI;
+    this.nextGate = 1 % this.course.checkpoints.length;
+    this.gatesPassed = 0;
+    this.lap = 1;
+    // Aim along the track's start direction.
+    const dir = this.course.startDirection;
+    this.yaw = Math.atan2(-dir.x, -dir.z);
     this.pitch = 0;
     this.speed = FLIGHT.baseSpeed;
     this.runTime = 0;
@@ -206,8 +218,10 @@ export class Game {
     this.score = 0;
     this.streak = 0;
     this.invuln = 0;
+    this.padCooldown = 0;
+    this.padBoostTimer = 0;
     this.countdown = 3;
-    this.rivals = this.config.showPosition ? [0.04, 0.02, 0.06, 0.03, 0.05] : [];
+    this.rivals = this.config.showPosition ? [0.03, 0.05, 0.07, 0.04, 0.06] : [];
 
     this.updateQuat();
     this.ship.root.position.copy(this.pos);
@@ -215,9 +229,9 @@ export class Game {
     this.ship.setVisible(true);
     this.cam.snap(this.pos, this.quat);
 
-    this.hud.totalLaps = 1;
+    this.hud.totalLaps = this.config.laps;
     this.hud.lap = 1;
-    this.hud.totalCheckpoints = this.world.checkpoints.length;
+    this.hud.totalCheckpoints = this.course.checkpoints.length;
     this.hud.timeIsElapsed = this.config.timeIsElapsed;
     this.hud.totalRacers = this.rivals.length + 1;
     this.updateCheckpointMarker();
@@ -226,9 +240,9 @@ export class Game {
   }
 
   private spawnEntities(): void {
-    // Clear previous.
+    // Clear previous. Distribute pickups/hazards along the race course.
     this.clearEntities();
-    const route = this.world.checkpoints;
+    const route = this.course.curve.getSpacedPoints(36);
 
     for (const p of comicSpawnPoints(route, this.config.comics, this.mode.length * 17 + 3)) {
       const c = new Comic(randomRarity(), p);
@@ -335,8 +349,9 @@ export class Game {
     this.runTime += dt;
     this.stepFlight(dt);
     this.stepGrail(dt);
+    this.stepBoostPads(dt);
     this.stepCollisions(dt);
-    if (this.config.usesCheckpoints) this.stepCheckpoints();
+    if (this.config.laps > 0) this.stepCheckpoints();
     this.stepTimer(dt);
     if (this.config.showPosition) this.stepRivals(dt);
 
@@ -360,13 +375,16 @@ export class Game {
   private stepFlight(dt: number): void {
     const inp = this.input.poll();
 
-    // Throttle → target speed; boost/grail overrides.
+    // Throttle → target speed; boost-pad / grail overrides.
     let targetSpeed = FLIGHT.baseSpeed + inp.throttle * 40;
+    const padActive = this.padBoostTimer > 0;
+    if (padActive) targetSpeed = Math.max(targetSpeed, FLIGHT.boostSpeed * 0.92);
     if (this.grailActive) targetSpeed = FLIGHT.boostSpeed;
     if (inp.brake) targetSpeed = FLIGHT.minSpeed;
-    targetSpeed = THREE.MathUtils.clamp(targetSpeed, FLIGHT.minSpeed, this.grailActive ? FLIGHT.boostSpeed : FLIGHT.maxSpeed);
+    const ceiling = this.grailActive || padActive ? FLIGHT.boostSpeed : FLIGHT.maxSpeed;
+    targetSpeed = THREE.MathUtils.clamp(targetSpeed, FLIGHT.minSpeed, ceiling);
 
-    const rate = targetSpeed > this.speed ? FLIGHT.accel : FLIGHT.brakeDecel;
+    const rate = targetSpeed > this.speed ? FLIGHT.accel * (padActive ? 2.2 : 1) : FLIGHT.brakeDecel;
     this.speed += THREE.MathUtils.clamp(targetSpeed - this.speed, -rate * dt, rate * dt);
 
     // Steering & pitch.
@@ -475,27 +493,49 @@ export class Game {
     return Math.min(5, 1 + Math.floor(this.streak / 6) * 0.5);
   }
 
+  private stepBoostPads(dt: number): void {
+    if (this.padCooldown > 0) this.padCooldown -= dt;
+    if (this.padBoostTimer > 0) this.padBoostTimer -= dt;
+    if (this.padCooldown > 0) return;
+    for (const pad of this.course.boostPads) {
+      if (this.pos.distanceToSquared(pad.position) < (pad.radius + SHIP_RADIUS) ** 2) {
+        this.padBoostTimer = PAD_BOOST_TIME;
+        this.padCooldown = PAD_COOLDOWN;
+        this.grail = Math.min(1, this.grail + 0.04);
+        this.cam.addShake(0.25);
+        this.audio.boost();
+        break;
+      }
+    }
+  }
+
   private stepCheckpoints(): void {
-    const cps = this.world.checkpoints;
-    if (this.cpIndex >= cps.length) return;
-    const target = cps[this.cpIndex];
+    const cps = this.course.checkpoints;
+    const target = cps[this.nextGate].position;
     if (this.pos.distanceTo(target) < CHECKPOINT_RADIUS) {
-      this.cpIndex++;
+      this.gatesPassed++;
       this.audio.checkpoint();
-      this.score += 200;
-      if (this.cpIndex >= cps.length) {
-        // Finished the route!
-        this.finishRun(true);
-        return;
+      this.score += 150;
+      this.nextGate = (this.nextGate + 1) % cps.length;
+      // Completed a full loop?
+      if (this.gatesPassed % cps.length === 0) {
+        this.lap++;
+        if (this.lap > this.config.laps) {
+          this.finishRun(true);
+          return;
+        }
+        this.hud.lap = this.lap;
+        this.score += 500; // lap bonus
+        this.audio.fanfare();
       }
       this.updateCheckpointMarker();
     }
   }
 
   private updateCheckpointMarker(): void {
-    const cps = this.world.checkpoints;
-    if (this.config.usesCheckpoints && this.cpIndex < cps.length) {
-      this.checkpointMarker.position.copy(cps[this.cpIndex]);
+    const cps = this.course.checkpoints;
+    if (this.config.laps > 0) {
+      this.checkpointMarker.position.copy(cps[this.nextGate].position);
       this.checkpointMarker.visible = true;
     } else {
       this.checkpointMarker.visible = false;
@@ -520,17 +560,10 @@ export class Game {
   }
 
   private playerProgress(): number {
-    const total = this.world.checkpoints.length;
-    if (total === 0) return 0;
-    let frac = this.cpIndex / total;
-    if (this.cpIndex < total) {
-      const target = this.world.checkpoints[this.cpIndex];
-      const prev = this.cpIndex > 0 ? this.world.checkpoints[this.cpIndex - 1] : this.world.startPosition();
-      const segLen = prev.distanceTo(target) || 1;
-      const done = THREE.MathUtils.clamp(1 - this.pos.distanceTo(target) / segLen, 0, 1);
-      frac += done / total;
-    }
-    return frac;
+    // Overall race progress 0..1 across all laps, using position on the curve.
+    const laps = Math.max(1, this.config.laps);
+    const lapFrac = this.course.progressAt(this.pos);
+    return THREE.MathUtils.clamp((this.lap - 1 + lapFrac) / laps, 0, 1);
   }
 
   private finishRun(won: boolean): void {
@@ -561,8 +594,11 @@ export class Game {
     h.grailActive = this.grailActive;
     h.score = this.score;
     h.multiplier = this.currentMultiplier();
-    h.checkpoint = Math.min(this.cpIndex, this.world.checkpoints.length);
-    h.totalCheckpoints = this.world.checkpoints.length;
+    const gateCount = this.course.checkpoints.length;
+    h.checkpoint = this.config.laps > 0 ? this.gatesPassed % gateCount : 0;
+    h.totalCheckpoints = gateCount;
+    h.lap = this.lap;
+    h.totalLaps = this.config.laps;
     h.altitude = Math.round(this.pos.y);
     h.timeIsElapsed = this.config.timeIsElapsed;
     h.timeLeft = this.config.timeIsElapsed ? this.runTime : this.timeLeft;
@@ -612,6 +648,7 @@ export class Game {
     this.input.detach();
     this.audio.dispose();
     this.world.dispose();
+    this.course.dispose();
     this.renderer.dispose();
   }
 }
